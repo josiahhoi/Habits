@@ -18,17 +18,17 @@ Then open <http://localhost:4173>. (Any static file server works; opening `index
 
 ## Publish to GitHub Pages
 
-1. Create a new GitHub repository (e.g. `habits`) and push this folder to it:
+1. Push this folder to the GitHub repository:
 
    ```bash
    git init && git add -A && git commit -m "Habit tracker"
    git branch -M main
-   git remote add origin https://github.com/YOUR-USERNAME/habits.git
+   git remote add origin https://github.com/josiahhoi/Habits.git
    git push -u origin main
    ```
 
 2. In the repo: **Settings → Pages → Build and deployment → Source: Deploy from a branch**, branch `main`, folder `/ (root)`.
-3. Your tracker is live at `https://YOUR-USERNAME.github.io/habits/` a minute later. Add it to your phone's home screen for an app-like feel.
+3. Your tracker is live at <https://josiahhoi.github.io/Habits/> a minute later. Add it to your phone's home screen for an app-like feel.
 
 A **private repo** works too (Pages on private repos needs GitHub Pro; the free alternative is a public repo — your log file is then public, so keep notes non-sensitive, or upgrade).
 
