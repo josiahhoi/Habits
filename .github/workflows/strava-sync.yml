@@ -1,0 +1,49 @@
+# .github/workflows/strava-sync.yml
+name: Strava sync
+
+on:
+  schedule:
+    # Roughly every 6 hours. Odd minute on purpose: GitHub delays/drops jobs
+    # scheduled exactly on the hour due to congestion.
+    - cron: "23 */6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: strava-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24 # any Node >= 20 works (script uses global fetch, no deps)
+
+      - name: Fetch activities from Strava
+        env:
+          STRAVA_CLIENT_ID: ${{ secrets.STRAVA_CLIENT_ID }}
+          STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
+          STRAVA_REFRESH_TOKEN: ${{ secrets.STRAVA_REFRESH_TOKEN }}
+        run: node .github/scripts/strava-sync.mjs
+
+      - name: Commit data/strava.json if it changed
+        run: |
+          git add data/strava.json
+          # --cached so a brand-new (previously untracked) data file is also
+          # detected; plain `git diff --quiet` ignores untracked files.
+          if git diff --cached --quiet; then
+            echo "data/strava.json unchanged; nothing to commit."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "chore(data): sync Strava activities"
+            git push
+          fi
