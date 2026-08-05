@@ -318,7 +318,6 @@ a { color: var(--focus); }
 .reading-list { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
 .reading-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 9px; }
 .reading-item .lang { font-size: 11px; color: var(--ink-2); background: color-mix(in srgb, var(--ink) 7%, transparent); border-radius: 5px; padding: 2px 6px; }
-.activity-item { display: flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 13px; padding: 3px 0; }
 
 /* ---------- Settings ---------- */
 .settings-grid { display: grid; gap: 0; }

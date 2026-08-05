@@ -12,7 +12,6 @@ export function defaultState() {
   return {
     version: 1,
     habits: [
-      { id: 'exercise', name: 'Exercise', icon: '🏃', slot: 1, auto: 'strava', archived: false },
       { id: 'reading', name: 'Greek/Hebrew Reading', icon: '📖', slot: 2, auto: 'readings', archived: false },
       { id: 'prayer', name: 'Prayer', icon: '🙏', slot: 3, auto: null, track: 'duration', archived: false },
     ],
@@ -28,8 +27,13 @@ export function defaultState() {
 // Habit records arrive from synced/imported JSON, and their fields end up in
 // HTML attributes and CSS vars — coerce every field to a safe shape on ingest
 // (esc() at render sites is the second layer).
-const AUTOS = new Set(['strava', 'readings']);
+const AUTOS = new Set(['readings']);
 let habitSeq = 0;
+
+// The built-in Strava-backed Exercise habit was removed 2026-08 — drop it on
+// every ingest path (load AND merge) so old synced/imported data can't
+// reintroduce it. Any 'exercise' entries left in day.done arrays are inert.
+const notRetired = (h) => h && h.auto !== 'strava' && h.id !== 'exercise';
 function sanitizeHabit(h) {
   if (!h || typeof h !== 'object') return null;
   const id = String(h.id ?? '').replace(/[^A-Za-z0-9_-]/g, '');
@@ -53,7 +57,7 @@ function normalize(s) {
   const d = defaultState();
   if (!s || typeof s !== 'object') return d;
   s.version = 1;
-  s.habits = Array.isArray(s.habits) ? s.habits.map(sanitizeHabit).filter(Boolean) : [];
+  s.habits = Array.isArray(s.habits) ? s.habits.filter(notRetired).map(sanitizeHabit).filter(Boolean) : [];
   if (s.habits.length === 0) s.habits = d.habits;
   s.habitsUpdated = s.habitsUpdated || 0;
   s.days = s.days && typeof s.days === 'object' ? s.days : {};
@@ -279,7 +283,7 @@ export function mergeRemote(remote) {
   const s = load();
   let changed = false;
   if ((remote.habitsUpdated || 0) > (s.habitsUpdated || 0) && Array.isArray(remote.habits)) {
-    const sanitized = remote.habits.map(sanitizeHabit).filter(Boolean);
+    const sanitized = remote.habits.filter(notRetired).map(sanitizeHabit).filter(Boolean);
     if (sanitized.length) {
       s.habits = sanitized;
       s.habitsUpdated = remote.habitsUpdated;

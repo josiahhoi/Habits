@@ -3,7 +3,6 @@
 import * as store from './store.js';
 import * as sync from './sync.js';
 import { esc, download, todayStr } from './util.js';
-import { stravaGeneratedAt, stravaDayCount } from './strava.js';
 
 const SLOT_NAMES = ['blue', 'orange', 'aqua', 'yellow', 'magenta', 'green', 'violet', 'red'];
 
@@ -11,13 +10,12 @@ export function renderSettings(root) {
   const s = store.getState();
   const gh = s.settings.gh;
   const token = store.getToken();
-  const gen = stravaGeneratedAt();
 
   const habitRows = s.habits.map((h) => `
     <div class="habit-manage-row ${h.archived ? 'archived' : ''}">
       <span class="hicon">${esc(h.icon)}</span>
       <span class="slot-dot" style="background: var(--slot${h.slot})"></span>
-      <span class="hname">${esc(h.name)}${h.auto ? ` <span class="small muted">(auto: ${h.auto === 'strava' ? 'Strava' : 'reading log'})</span>` : ''}${h.track === 'duration' ? ' <span class="small muted">(tracks time)</span>' : ''}</span>
+      <span class="hname">${esc(h.name)}${h.auto === 'readings' ? ' <span class="small muted">(auto: reading log)</span>' : ''}${h.track === 'duration' ? ' <span class="small muted">(tracks time)</span>' : ''}</span>
       <button class="btn tiny" data-tracktime="${h.id}" title="Track minutes for this habit">⏱ ${h.track === 'duration' ? 'On' : 'Off'}</button>
       <button class="btn tiny" data-rename="${h.id}">Rename</button>
       <button class="btn tiny" data-archive="${h.id}">${h.archived ? 'Unarchive' : 'Archive'}</button>
@@ -43,14 +41,6 @@ export function renderSettings(root) {
         <button class="btn danger" id="gh-disconnect">Disconnect</button>
       </div>
       <div class="status-line" id="gh-status"></div>
-    </div>
-
-    <div class="card">
-      <h2>Exercise sync (Strava / Garmin)</h2>
-      <p class="sub">A GitHub Action in this repo pulls your Strava activities a few times a day and commits them to <code>data/strava.json</code>; days with an activity automatically count as Exercise. Garmin watches: turn on Garmin&nbsp;Connect → Strava auto-sync, and activities flow through. Setup steps are in the README.</p>
-      <div class="small">${gen
-        ? `Last sync: <b>${esc(new Date(gen).toLocaleString())}</b> · ${stravaDayCount()} active days on record`
-        : 'No Strava data found yet — see README to set up the sync (or log exercise manually; everything works without it).'}</div>
     </div>
 
     <div class="card">

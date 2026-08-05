@@ -2,13 +2,12 @@
 
 import * as store from './store.js';
 import * as sync from './sync.js';
-import { loadStrava, earliestStravaDay } from './strava.js';
 import { renderHeatmap } from './heatmap.js';
 import { renderGnt } from './gnt.js';
 import { renderSettings } from './settings.js';
 import { openDayPanel, isHabitDone } from './daypanel.js';
 import { esc, todayStr, addDays, fmtDateLong, fmtMins } from './util.js';
-import { formatRange } from './bible.js';
+import { formatRange, chapterPieces } from './bible.js';
 
 const TABS = ['dashboard', 'gnt', 'settings'];
 let currentTab = 'dashboard';
@@ -39,10 +38,8 @@ function computeStreaks(habit) {
     d = addDays(d, -1);
   }
   // longest + total: walk the calendar from the earliest record to the latest
-  // (a synced day can sit ahead of this device's local date — count it too;
-  // effectiveDone also covers strava-only days inside the window)
-  const candidates = [store.earliestDate(), earliestStravaDay()].filter(Boolean).sort();
-  const start = candidates[0] || today;
+  // (a synced day can sit ahead of this device's local date — count it too)
+  const start = store.earliestDate() || today;
   let end = today;
   for (const k of Object.keys(store.getState().days)) if (k > end) end = k;
   let longest = 0;
@@ -66,11 +63,20 @@ function renderDashboard(root) {
   const habits = store.activeHabits();
   const today = todayStr();
 
+  // Verses read per day, for shading the reading habit's heatmap.
+  const versesByDay = {};
+  for (const [ds, d] of Object.entries(store.getState().days)) {
+    let n = 0;
+    for (const r of d.readings || []) {
+      for (const p of chapterPieces(r)) n += p.to - p.from + 1;
+    }
+    if (n) versesByDay[ds] = n;
+  }
+
   const chips = habits.map((h) => {
     const done = effectiveDone(today, h);
     const mins = h.track === 'duration' ? store.minutesFor(today, h.id) : 0;
     const via = mins > 0 ? `<span class="via">${fmtMins(mins)}</span>`
-      : h.auto === 'strava' && done && !store.getDay(today).done.includes(h.id) ? '<span class="via">via Strava</span>'
       : h.auto === 'readings' && done && !store.getDay(today).done.includes(h.id) ? '<span class="via">via log</span>' : '';
     return `<button class="chip ${done ? 'done' : ''}" data-habit="${h.id}" style="--hc: var(--slot${h.slot})" aria-pressed="${done}">
       <span class="dot"></span>${esc(h.icon)} ${esc(h.name)} ${via}<span class="check">✓</span>
@@ -79,8 +85,10 @@ function renderDashboard(root) {
 
   const habitSections = habits.map((h) => {
     const st = computeStreaks(h);
-    const timeStat = h.track === 'duration' ? `<span>⏱ <b>${fmtMins(store.totalMinutes(h.id))}</b></span>` : '';
-    const durLegend = h.track === 'duration' ? `
+    const totalVerses = h.auto === 'readings' ? Object.values(versesByDay).reduce((a, b) => a + b, 0) : 0;
+    const timeStat = h.track === 'duration' ? `<span>⏱ <b>${fmtMins(store.totalMinutes(h.id))}</b></span>`
+      : h.auto === 'readings' && totalVerses ? `<span>📜 <b>${totalVerses.toLocaleString()}</b> verses</span>` : '';
+    const rampLegend = h.track === 'duration' ? `
         <div class="hm-legend">
           <span>0</span>
           <span class="sw" style="background:var(--cell0)"></span>
@@ -88,6 +96,15 @@ function renderDashboard(root) {
           <span class="sw" style="background:var(--slot${h.slot});opacity:.68" title="15–29 minutes"></span>
           <span class="sw" style="background:var(--slot${h.slot})" title="30 minutes or more"></span>
           <span>30m+</span>
+        </div>`
+      : h.auto === 'readings' ? `
+        <div class="hm-legend">
+          <span>0</span>
+          <span class="sw" style="background:var(--cell0)"></span>
+          <span class="sw" style="background:var(--slot${h.slot});opacity:.4" title="Under 10 verses"></span>
+          <span class="sw" style="background:var(--slot${h.slot});opacity:.68" title="10–29 verses"></span>
+          <span class="sw" style="background:var(--slot${h.slot})" title="30 verses or more (about a chapter)"></span>
+          <span>30+ vv</span>
         </div>` : '';
     return `
       <div class="card" data-habit-card="${h.id}">
@@ -101,7 +118,7 @@ function renderDashboard(root) {
           </span>
         </div>
         <div data-hm="${h.id}"></div>
-        ${durLegend}
+        ${rampLegend}
       </div>`;
   }).join('');
 
@@ -171,25 +188,31 @@ function renderDashboard(root) {
     onDayClick: openDay,
   });
 
-  // Per-habit heatmaps (duration-tracked habits shade by minutes: a one-hue
-  // light-to-dark ramp — under 15m, under 30m, 30m+ / plain done)
+  // Per-habit heatmaps. Habits with a per-day amount shade as a one-hue
+  // light-to-dark ramp: minutes for duration habits (<15m / <30m / 30m+),
+  // verses for the reading habit (<10 / <30 / 30+ ≈ a chapter or more).
+  // A day marked done with no amount recorded gets the full color.
   for (const h of habits) {
+    const amountFor = (ds) =>
+      h.track === 'duration' ? store.minutesFor(ds, h.id)
+      : h.auto === 'readings' ? (versesByDay[ds] || 0)
+      : 0;
+    const rampCut = h.track === 'duration' ? [15, 30] : [10, 30];
     renderHeatmap(root.querySelector(`[data-hm="${h.id}"]`), {
       year: viewYear,
       classFor: (ds) => {
         if (!effectiveDone(ds, h)) return '';
         let cls = `s${h.slot}`;
-        if (h.track === 'duration') {
-          const m = store.minutesFor(ds, h.id);
-          if (m > 0 && m < 15) cls += ' d1';
-          else if (m >= 15 && m < 30) cls += ' d2';
-        }
+        const a = amountFor(ds);
+        if (a > 0 && a < rampCut[0]) cls += ' d1';
+        else if (a >= rampCut[0] && a < rampCut[1]) cls += ' d2';
         return cls;
       },
       tooltipFor: (ds) => {
         const done = effectiveDone(ds, h);
-        const m = h.track === 'duration' ? store.minutesFor(ds, h.id) : 0;
-        return `<b>${esc(fmtDateLong(ds))}</b><br>${esc(h.name)}: ${done ? `done ✓${m ? ` · ${fmtMins(m)}` : ''}` : 'not done'}`;
+        const a = amountFor(ds);
+        const amountLabel = !a ? '' : h.track === 'duration' ? ` · ${fmtMins(a)}` : ` · ${a} verses`;
+        return `<b>${esc(fmtDateLong(ds))}</b><br>${esc(h.name)}: ${done ? `done ✓${amountLabel}` : 'not done'}`;
       },
       onDayClick: openDay,
     });
@@ -274,9 +297,6 @@ async function main() {
     'Your data lives in this browser (and your GitHub repo when sync is on).';
 
   switchTab(location.hash.slice(1) || 'dashboard');
-
-  await loadStrava();   // non-blocking for first paint; rerender when it arrives
-  rerender();
   sync.init();
 }
 

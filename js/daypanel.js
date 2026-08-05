@@ -1,10 +1,9 @@
 // Day detail modal: toggle habits, log passages, see Strava activities, note.
 
 import * as store from './store.js';
-import { esc, el, fmtDateLong, fmtDuration, fmtKm, todayStr } from './util.js';
+import { esc, fmtDateLong, todayStr } from './util.js';
 import { BOOKS } from './bible-data.js';
 import { byAbbrev, formatRange, languageOf, maxVerse, normalizeRange } from './bible.js';
-import { activitiesOn, hasActivity } from './strava.js';
 
 let onCloseCb = null;
 let openDate = null;
@@ -17,7 +16,6 @@ function onEscape(e) {
 export function isHabitDone(date, habit, dayData) {
   const d = dayData || store.getDay(date);
   if (d.done.includes(habit.id)) return true;
-  if (habit.auto === 'strava' && hasActivity(date)) return true;
   if (habit.auto === 'readings' && d.readings.length > 0) return true;
   if (habit.track === 'duration' && d.mins && Number(d.mins[habit.id]) > 0) return true;
   return false;
@@ -25,7 +23,6 @@ export function isHabitDone(date, habit, dayData) {
 
 export function autoReason(date, habit, dayData) {
   const d = dayData || store.getDay(date);
-  if (habit.auto === 'strava' && hasActivity(date)) return 'via Strava';
   if (habit.auto === 'readings' && d.readings.length > 0 && !d.done.includes(habit.id)) return 'via reading log';
   return '';
 }
@@ -123,7 +120,6 @@ function render(date) {
   const root = document.getElementById('modal-root');
   const day = store.getDay(date);
   const habits = store.activeHabits();
-  const acts = activitiesOn(date);
   const isToday = date === todayStr();
 
   const habitRows = habits.map((h) => {
@@ -150,11 +146,6 @@ function render(date) {
       </div>`;
   }).join('');
 
-  const actHtml = acts.length
-    ? `<div class="small muted" style="margin-top:2px">Strava:</div>` + acts.map((a) => `
-        <div class="activity-item">🏅 ${esc(a.type || 'Activity')} · ${esc(a.name || '')} ${a.movingTime ? `· ${fmtDuration(a.movingTime)}` : ''} ${a.distance ? `· ${fmtKm(a.distance)}` : ''}</div>`).join('')
-    : '';
-
   const readingsHtml = day.readings.map((r, i) => `
     <div class="reading-item">
       <span>${esc(formatRange(r))} <span class="lang">${esc(languageOf(r.b))}</span></span>
@@ -169,7 +160,6 @@ function render(date) {
           <button class="iconbtn" id="dp-close" aria-label="Close">✕</button>
         </div>
         <div class="day-habits">${habitRows}</div>
-        ${actHtml}
         <h3 class="small" style="margin-top:14px">Reading log</h3>
         <div class="reading-list">${readingsHtml || '<div class="small muted">No passages logged.</div>'}</div>
         ${passageFormHtml('dp')}
