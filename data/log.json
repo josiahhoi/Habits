@@ -2,14 +2,6 @@
  "version": 1,
  "habits": [
   {
-   "id": "exercise",
-   "name": "Exercise",
-   "icon": "🏃",
-   "slot": 1,
-   "auto": "strava",
-   "archived": false
-  },
-  {
    "id": "reading",
    "name": "Greek/Hebrew Reading",
    "icon": "📖",
@@ -26,7 +18,7 @@
    "archived": false
   }
  ],
- "habitsUpdated": 0,
+ "habitsUpdated": 1785971873430,
  "days": {},
  "backfill": {
   "ranges": [],
