@@ -7,6 +7,7 @@
    "icon": "📖",
    "slot": 2,
    "auto": "readings",
+   "track": null,
    "archived": false
   },
   {
@@ -15,6 +16,7 @@
    "icon": "🙏",
    "slot": 3,
    "auto": null,
+   "track": "duration",
    "archived": false
   }
  ],
@@ -34,7 +36,8 @@
     }
    ],
    "note": "",
-   "m": 1785971930410
+   "m": 1785971930410,
+   "mins": {}
   },
   "2026-08-05": {
    "done": [],
@@ -48,7 +51,8 @@
     }
    ],
    "note": "",
-   "m": 1785971962901
+   "m": 1785971962901,
+   "mins": {}
   }
  },
  "backfill": {
