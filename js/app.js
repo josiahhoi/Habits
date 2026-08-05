@@ -7,7 +7,7 @@ import { renderHeatmap } from './heatmap.js';
 import { renderGnt } from './gnt.js';
 import { renderSettings } from './settings.js';
 import { openDayPanel, isHabitDone } from './daypanel.js';
-import { esc, todayStr, addDays, fmtDateLong } from './util.js';
+import { esc, todayStr, addDays, fmtDateLong, fmtMins } from './util.js';
 import { formatRange } from './bible.js';
 
 const TABS = ['dashboard', 'gnt', 'settings'];
@@ -68,7 +68,9 @@ function renderDashboard(root) {
 
   const chips = habits.map((h) => {
     const done = effectiveDone(today, h);
-    const via = h.auto === 'strava' && done && !store.getDay(today).done.includes(h.id) ? '<span class="via">via Strava</span>'
+    const mins = h.track === 'duration' ? store.minutesFor(today, h.id) : 0;
+    const via = mins > 0 ? `<span class="via">${fmtMins(mins)}</span>`
+      : h.auto === 'strava' && done && !store.getDay(today).done.includes(h.id) ? '<span class="via">via Strava</span>'
       : h.auto === 'readings' && done && !store.getDay(today).done.includes(h.id) ? '<span class="via">via log</span>' : '';
     return `<button class="chip ${done ? 'done' : ''}" data-habit="${h.id}" style="--hc: var(--slot${h.slot})" aria-pressed="${done}">
       <span class="dot"></span>${esc(h.icon)} ${esc(h.name)} ${via}<span class="check">✓</span>
@@ -77,17 +79,29 @@ function renderDashboard(root) {
 
   const habitSections = habits.map((h) => {
     const st = computeStreaks(h);
+    const timeStat = h.track === 'duration' ? `<span>⏱ <b>${fmtMins(store.totalMinutes(h.id))}</b></span>` : '';
+    const durLegend = h.track === 'duration' ? `
+        <div class="hm-legend">
+          <span>0</span>
+          <span class="sw" style="background:var(--cell0)"></span>
+          <span class="sw" style="background:var(--slot${h.slot});opacity:.4" title="Under 15 minutes"></span>
+          <span class="sw" style="background:var(--slot${h.slot});opacity:.68" title="15–29 minutes"></span>
+          <span class="sw" style="background:var(--slot${h.slot})" title="30 minutes or more"></span>
+          <span>30m+</span>
+        </div>` : '';
     return `
       <div class="card" data-habit-card="${h.id}">
         <div class="hm-head">
           <span class="hm-title" style="--hc: var(--slot${h.slot})"><span class="dot"></span>${esc(h.icon)} ${esc(h.name)}</span>
           <span class="hm-stats">
+            ${timeStat}
             <span>🔥 <b>${st.current}</b> current</span>
             <span>best <b>${st.longest}</b></span>
             <span>total <b>${st.total}</b></span>
           </span>
         </div>
         <div data-hm="${h.id}"></div>
+        ${durLegend}
       </div>`;
   }).join('');
 
@@ -157,14 +171,25 @@ function renderDashboard(root) {
     onDayClick: openDay,
   });
 
-  // Per-habit heatmaps
+  // Per-habit heatmaps (duration-tracked habits shade by minutes: a one-hue
+  // light-to-dark ramp — under 15m, under 30m, 30m+ / plain done)
   for (const h of habits) {
     renderHeatmap(root.querySelector(`[data-hm="${h.id}"]`), {
       year: viewYear,
-      classFor: (ds) => (effectiveDone(ds, h) ? `s${h.slot}` : ''),
+      classFor: (ds) => {
+        if (!effectiveDone(ds, h)) return '';
+        let cls = `s${h.slot}`;
+        if (h.track === 'duration') {
+          const m = store.minutesFor(ds, h.id);
+          if (m > 0 && m < 15) cls += ' d1';
+          else if (m >= 15 && m < 30) cls += ' d2';
+        }
+        return cls;
+      },
       tooltipFor: (ds) => {
         const done = effectiveDone(ds, h);
-        return `<b>${esc(fmtDateLong(ds))}</b><br>${esc(h.name)}: ${done ? 'done ✓' : 'not done'}`;
+        const m = h.track === 'duration' ? store.minutesFor(ds, h.id) : 0;
+        return `<b>${esc(fmtDateLong(ds))}</b><br>${esc(h.name)}: ${done ? `done ✓${m ? ` · ${fmtMins(m)}` : ''}` : 'not done'}`;
       },
       onDayClick: openDay,
     });

@@ -19,6 +19,7 @@ export function isHabitDone(date, habit, dayData) {
   if (d.done.includes(habit.id)) return true;
   if (habit.auto === 'strava' && hasActivity(date)) return true;
   if (habit.auto === 'readings' && d.readings.length > 0) return true;
+  if (habit.track === 'duration' && d.mins && Number(d.mins[habit.id]) > 0) return true;
   return false;
 }
 
@@ -128,6 +129,16 @@ function render(date) {
   const habitRows = habits.map((h) => {
     const done = isHabitDone(date, h, day);
     const reason = autoReason(date, h, day);
+    const mins = h.track === 'duration' ? (day.mins && Number(day.mins[h.id])) || 0 : 0;
+    const timeRow = h.track === 'duration' ? `
+        <div class="time-row">
+          <label for="mins-${h.id}" title="Minutes">⏱</label>
+          <input id="mins-${h.id}" data-mins="${h.id}" type="number" inputmode="numeric" min="0" max="1440" step="5" value="${mins || ''}" placeholder="0" aria-label="Minutes of ${esc(h.name)}">
+          <span class="small muted">min</span>
+          <button class="btn tiny" data-addmin="${h.id}:5">+5</button>
+          <button class="btn tiny" data-addmin="${h.id}:15">+15</button>
+          <button class="btn tiny" data-addmin="${h.id}:30">+30</button>
+        </div>` : '';
     return `
       <div class="day-habit-row">
         <button class="chip ${done ? 'done' : ''}" data-habit="${h.id}" style="--hc: var(--slot${h.slot})" aria-pressed="${done}">
@@ -135,6 +146,7 @@ function render(date) {
           ${reason ? `<span class="via">${esc(reason)}</span>` : ''}
           <span class="check">✓</span>
         </button>
+        ${timeRow}
       </div>`;
   }).join('');
 
@@ -186,6 +198,17 @@ function render(date) {
     btn.addEventListener('click', () => {
       const idx = Number(btn.dataset.delReading);
       store.removeReading(date, idx, day.readings[idx]);
+    });
+  }
+  for (const input of backdrop.querySelectorAll('[data-mins]')) {
+    input.addEventListener('change', () => {
+      store.setMinutes(date, input.dataset.mins, input.value);
+    });
+  }
+  for (const btn of backdrop.querySelectorAll('[data-addmin]')) {
+    btn.addEventListener('click', () => {
+      const [id, n] = btn.dataset.addmin.split(':');
+      store.setMinutes(date, id, store.minutesFor(date, id) + Number(n));
     });
   }
 

@@ -17,7 +17,8 @@ export function renderSettings(root) {
     <div class="habit-manage-row ${h.archived ? 'archived' : ''}">
       <span class="hicon">${esc(h.icon)}</span>
       <span class="slot-dot" style="background: var(--slot${h.slot})"></span>
-      <span class="hname">${esc(h.name)}${h.auto ? ` <span class="small muted">(auto: ${h.auto === 'strava' ? 'Strava' : 'reading log'})</span>` : ''}</span>
+      <span class="hname">${esc(h.name)}${h.auto ? ` <span class="small muted">(auto: ${h.auto === 'strava' ? 'Strava' : 'reading log'})</span>` : ''}${h.track === 'duration' ? ' <span class="small muted">(tracks time)</span>' : ''}</span>
+      <button class="btn tiny" data-tracktime="${h.id}" title="Track minutes for this habit">⏱ ${h.track === 'duration' ? 'On' : 'Off'}</button>
       <button class="btn tiny" data-rename="${h.id}">Rename</button>
       <button class="btn tiny" data-archive="${h.id}">${h.archived ? 'Unarchive' : 'Archive'}</button>
       <button class="btn tiny danger" data-delete="${h.id}">Delete</button>
@@ -60,6 +61,7 @@ export function renderSettings(root) {
         <div class="field"><label for="nh-name">Name</label><input id="nh-name" placeholder="e.g. Scripture memory"></div>
         <div class="field"><label for="nh-icon">Emoji</label><input id="nh-icon" placeholder="⭐" style="width:64px"></div>
         <div class="field"><label>Color</label><div class="slot-picker" id="nh-slots">${slotPicks}</div></div>
+        <label class="small" style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><input type="checkbox" id="nh-track"> Track time</label>
         <button class="btn primary" id="nh-add" style="margin-bottom:2px">Add</button>
       </div>
     </div>
@@ -131,6 +133,12 @@ export function renderSettings(root) {
       if (name && name.trim()) store.updateHabit(h.id, { name: name.trim() });
     });
   }
+  for (const btn of root.querySelectorAll('[data-tracktime]')) {
+    btn.addEventListener('click', () => {
+      const h = s.habits.find((x) => x.id === btn.dataset.tracktime);
+      store.updateHabit(h.id, { track: h.track === 'duration' ? null : 'duration' });
+    });
+  }
   for (const btn of root.querySelectorAll('[data-archive]')) {
     btn.addEventListener('click', () => {
       const h = s.habits.find((x) => x.id === btn.dataset.archive);
@@ -157,7 +165,12 @@ export function renderSettings(root) {
   root.querySelector('#nh-add').addEventListener('click', () => {
     const name = root.querySelector('#nh-name').value.trim();
     if (!name) return;
-    store.addHabit({ name, icon: root.querySelector('#nh-icon').value.trim() || '⭐', slot: pickedSlot });
+    store.addHabit({
+      name,
+      icon: root.querySelector('#nh-icon').value.trim() || '⭐',
+      slot: pickedSlot,
+      track: root.querySelector('#nh-track').checked ? 'duration' : null,
+    });
   });
 
   // --- Data tools ---

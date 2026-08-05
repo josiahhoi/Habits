@@ -14,7 +14,7 @@ export function defaultState() {
     habits: [
       { id: 'exercise', name: 'Exercise', icon: '🏃', slot: 1, auto: 'strava', archived: false },
       { id: 'reading', name: 'Greek/Hebrew Reading', icon: '📖', slot: 2, auto: 'readings', archived: false },
-      { id: 'prayer', name: 'Prayer', icon: '🙏', slot: 3, auto: null, archived: false },
+      { id: 'prayer', name: 'Prayer', icon: '🙏', slot: 3, auto: null, track: 'duration', archived: false },
     ],
     habitsUpdated: 0,
     // days["YYYY-MM-DD"] = { done: [habitId], readings: [{b,c1,v1,c2,v2}], note: "", m: epochMs }
@@ -39,6 +39,12 @@ function sanitizeHabit(h) {
     icon: String(h.icon ?? '⭐').slice(0, 8),
     slot: Math.min(8, Math.max(1, h.slot | 0)),
     auto: AUTOS.has(h.auto) ? h.auto : null,
+    // undefined (not null) means the record predates time tracking — migrate
+    // the built-in prayer habit to duration tracking; an explicit null means
+    // the user turned it off.
+    track: h.track === 'duration' ? 'duration'
+      : h.track === undefined && h.id === 'prayer' ? 'duration'
+      : null,
     archived: Boolean(h.archived),
   };
 }
@@ -55,6 +61,7 @@ function normalize(s) {
     day.done = Array.isArray(day.done) ? day.done : [];
     day.readings = Array.isArray(day.readings) ? day.readings : [];
     day.note = typeof day.note === 'string' ? day.note : '';
+    day.mins = day.mins && typeof day.mins === 'object' ? day.mins : {};
     day.m = day.m || 0;
   }
   if (!s.backfill || !Array.isArray(s.backfill.ranges)) s.backfill = d.backfill;
@@ -108,7 +115,7 @@ export function save(kind = 'change', { silent = false } = {}) {
 
 function day(date) {
   const s = load();
-  if (!s.days[date]) s.days[date] = { done: [], readings: [], note: '', m: 0 };
+  if (!s.days[date]) s.days[date] = { done: [], readings: [], note: '', mins: {}, m: 0 };
   return s.days[date];
 }
 
@@ -156,6 +163,30 @@ export function setNote(date, text) {
   save();
 }
 
+// Minutes spent on a duration-tracked habit (e.g. prayer). 0 clears the entry.
+export function setMinutes(date, habitId, mins) {
+  const d = day(date);
+  if (!d.mins || typeof d.mins !== 'object') d.mins = {};
+  const m = Math.max(0, Math.min(1440, Math.round(Number(mins) || 0)));
+  if (m > 0) d.mins[habitId] = m;
+  else delete d.mins[habitId];
+  touch(date);
+  save();
+}
+
+export function minutesFor(date, habitId) {
+  const d = load().days[date];
+  return d && d.mins ? Number(d.mins[habitId]) || 0 : 0;
+}
+
+export function totalMinutes(habitId) {
+  let total = 0;
+  for (const d of Object.values(load().days)) {
+    if (d.mins) total += Number(d.mins[habitId]) || 0;
+  }
+  return total;
+}
+
 export function addBackfill(range) {
   const s = load();
   s.backfill.ranges.push(range);
@@ -170,10 +201,10 @@ export function removeBackfill(idx) {
   save();
 }
 
-export function addHabit({ name, icon, slot }) {
+export function addHabit({ name, icon, slot, track }) {
   const s = load();
   const id = `h${Date.now().toString(36)}`;
-  s.habits.push({ id, name, icon: icon || '⭐', slot: slot || 4, auto: null, archived: false });
+  s.habits.push({ id, name, icon: icon || '⭐', slot: slot || 4, auto: null, track: track === 'duration' ? 'duration' : null, archived: false });
   s.habitsUpdated = Date.now();
   save();
 }
@@ -264,6 +295,7 @@ export function mergeRemote(remote) {
         done: Array.isArray(rd.done) ? rd.done : [],
         readings: Array.isArray(rd.readings) ? rd.readings : [],
         note: typeof rd.note === 'string' ? rd.note : '',
+        mins: rd.mins && typeof rd.mins === 'object' ? rd.mins : {},
         m: rd.m || 0,
       };
       changed = true;
@@ -304,7 +336,7 @@ export function activeHabits() {
 }
 
 export function getDay(date) {
-  return load().days[date] || { done: [], readings: [], note: '', m: 0 };
+  return load().days[date] || { done: [], readings: [], note: '', mins: {}, m: 0 };
 }
 
 export function earliestDate() {

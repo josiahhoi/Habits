@@ -3,6 +3,7 @@
 A personal habit tracker that runs entirely on GitHub Pages — no server, no accounts.
 
 - **GitHub-style heatmaps** for each habit (Exercise, Greek/Hebrew Reading, Prayer — add your own), plus a combined view, streaks, and totals.
+- **Prayer time tracking** — log minutes per day (quick +5/+15/+30 buttons in the day panel); the Prayer heatmap shades by duration (under 15m / under 30m / 30m+) and shows total time prayed. Any habit can track time via Settings → ⏱.
 - **Verse-level reading log** — record exactly which passages you read each day.
 - **Greek NT tab** — verse-accurate progress through the Greek New Testament (counted against NA28; the 16 verses absent from NA28 are excluded). Includes per-book meters, per-chapter shading, and a way to mark passages you read before you started tracking.
 - **Exercise auto-sync from Strava** via a GitHub Action (Garmin watches: enable Garmin Connect → Strava auto-sync and activities flow through — Garmin's own API isn't open to individuals).

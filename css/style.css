@@ -215,6 +215,9 @@ a { color: var(--focus); }
 .hm-cell.q1 { fill: var(--q1); }
 .hm-cell.q2 { fill: var(--q2); }
 .hm-cell.q3 { fill: var(--q3); }
+/* duration shading: one hue, light -> dark (under 15m, under 30m, 30m+/done) */
+.hm-cell.d1 { fill-opacity: 0.4; }
+.hm-cell.d2 { fill-opacity: 0.68; }
 .hm-cell.s1 { fill: var(--slot1); } .hm-cell.s2 { fill: var(--slot2); }
 .hm-cell.s3 { fill: var(--slot3); } .hm-cell.s4 { fill: var(--slot4); }
 .hm-cell.s5 { fill: var(--slot5); } .hm-cell.s6 { fill: var(--slot6); }
@@ -305,7 +308,13 @@ a { color: var(--focus); }
 }
 .modal h2 { font-size: 17px; }
 .day-habits { display: flex; flex-direction: column; gap: 8px; margin: 14px 0; }
-.day-habit-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.day-habit-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.time-row { display: flex; align-items: center; gap: 6px; }
+.time-row input {
+  width: 64px; background: var(--page); border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 8px; font-variant-numeric: tabular-nums;
+}
+.time-row input:focus-visible { outline: 2px solid var(--focus); outline-offset: 0; }
 .reading-list { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
 .reading-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 9px; }
 .reading-item .lang { font-size: 11px; color: var(--ink-2); background: color-mix(in srgb, var(--ink) 7%, transparent); border-radius: 5px; padding: 2px 6px; }
