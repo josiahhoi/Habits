@@ -1,0 +1,35 @@
+{
+ "version": 1,
+ "habits": [
+  {
+   "id": "exercise",
+   "name": "Exercise",
+   "icon": "🏃",
+   "slot": 1,
+   "auto": "strava",
+   "archived": false
+  },
+  {
+   "id": "reading",
+   "name": "Greek/Hebrew Reading",
+   "icon": "📖",
+   "slot": 2,
+   "auto": "readings",
+   "archived": false
+  },
+  {
+   "id": "prayer",
+   "name": "Prayer",
+   "icon": "🙏",
+   "slot": 3,
+   "auto": null,
+   "archived": false
+  }
+ ],
+ "habitsUpdated": 0,
+ "days": {},
+ "backfill": {
+  "ranges": [],
+  "m": 0
+ }
+}
