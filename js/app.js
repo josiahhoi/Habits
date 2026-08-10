@@ -59,6 +59,15 @@ function computeStreaks(habit) {
 
 // ---------- Dashboard ----------
 
+// How a habit's per-day amount maps onto the heatmap's shading ramp.
+// Habits with no amount to record (no time tracking, no reading log) get no
+// ramp: their done days are always outlined.
+function rampFor(habit) {
+  if (habit.track === 'duration') return { unit: 'minutes', cuts: [15, 30], top: '30m+' };
+  if (habit.auto === 'readings') return { unit: 'verses', cuts: [10, 30], top: '30+ vv' };
+  return null;
+}
+
 function renderDashboard(root) {
   const habits = store.activeHabits();
   const today = todayStr();
@@ -88,23 +97,16 @@ function renderDashboard(root) {
     const totalVerses = h.auto === 'readings' ? Object.values(versesByDay).reduce((a, b) => a + b, 0) : 0;
     const timeStat = h.track === 'duration' ? `<span>⏱ <b>${fmtMins(store.totalMinutes(h.id))}</b></span>`
       : h.auto === 'readings' && totalVerses ? `<span>📜 <b>${totalVerses.toLocaleString()}</b> verses</span>` : '';
-    const rampLegend = h.track === 'duration' ? `
+    const ramp = rampFor(h);
+    const rampLegend = ramp ? `
         <div class="hm-legend">
-          <span>0</span>
-          <span class="sw" style="background:var(--cell0)"></span>
-          <span class="sw" style="background:var(--slot${h.slot});opacity:.4" title="Under 15 minutes"></span>
-          <span class="sw" style="background:var(--slot${h.slot});opacity:.68" title="15–29 minutes"></span>
-          <span class="sw" style="background:var(--slot${h.slot})" title="30 minutes or more"></span>
-          <span>30m+</span>
-        </div>`
-      : h.auto === 'readings' ? `
-        <div class="hm-legend">
-          <span>0</span>
-          <span class="sw" style="background:var(--cell0)"></span>
-          <span class="sw" style="background:var(--slot${h.slot});opacity:.4" title="Under 10 verses"></span>
-          <span class="sw" style="background:var(--slot${h.slot});opacity:.68" title="10–29 verses"></span>
-          <span class="sw" style="background:var(--slot${h.slot})" title="30 verses or more (about a chapter)"></span>
-          <span>30+ vv</span>
+          <span>none</span>
+          <span class="sw" style="background:var(--cell0)" title="Nothing logged"></span>
+          <span class="sw" style="background:transparent;border:1.75px solid var(--slot${h.slot})" title="Done — no ${ramp.unit} recorded"></span>
+          <span class="sw" style="background:var(--slot${h.slot});opacity:.4" title="Under ${ramp.cuts[0]} ${ramp.unit}"></span>
+          <span class="sw" style="background:var(--slot${h.slot});opacity:.68" title="${ramp.cuts[0]}–${ramp.cuts[1] - 1} ${ramp.unit}"></span>
+          <span class="sw" style="background:var(--slot${h.slot})" title="${ramp.cuts[1]} ${ramp.unit} or more"></span>
+          <span>${ramp.top}</span>
         </div>` : '';
     return `
       <div class="card" data-habit-card="${h.id}">
@@ -188,30 +190,31 @@ function renderDashboard(root) {
     onDayClick: openDay,
   });
 
-  // Per-habit heatmaps. Habits with a per-day amount shade as a one-hue
-  // light-to-dark ramp: minutes for duration habits (<15m / <30m / 30m+),
-  // verses for the reading habit (<10 / <30 / 30+ ≈ a chapter or more).
-  // A day marked done with no amount recorded gets the full color.
+  // Per-habit heatmaps. A day marked done with no amount recorded is
+  // outlined; recording an amount fills it on a one-hue light-to-dark ramp —
+  // minutes for duration habits (<15m / <30m / 30m+), verses for the reading
+  // habit (<10 / <30 / 30+ ≈ a chapter or more).
   for (const h of habits) {
+    const ramp = rampFor(h);
     const amountFor = (ds) =>
       h.track === 'duration' ? store.minutesFor(ds, h.id)
       : h.auto === 'readings' ? (versesByDay[ds] || 0)
       : 0;
-    const rampCut = h.track === 'duration' ? [15, 30] : [10, 30];
     renderHeatmap(root.querySelector(`[data-hm="${h.id}"]`), {
       year: viewYear,
       classFor: (ds) => {
         if (!effectiveDone(ds, h)) return '';
-        let cls = `s${h.slot}`;
         const a = amountFor(ds);
-        if (a > 0 && a < rampCut[0]) cls += ' d1';
-        else if (a >= rampCut[0] && a < rampCut[1]) cls += ' d2';
-        return cls;
+        if (!a) return `s${h.slot} outline`;
+        if (a < ramp.cuts[0]) return `s${h.slot} d1`;
+        if (a < ramp.cuts[1]) return `s${h.slot} d2`;
+        return `s${h.slot}`;
       },
       tooltipFor: (ds) => {
         const done = effectiveDone(ds, h);
         const a = amountFor(ds);
-        const amountLabel = !a ? '' : h.track === 'duration' ? ` · ${fmtMins(a)}` : ` · ${a} verses`;
+        const amountLabel = a ? (h.track === 'duration' ? ` · ${fmtMins(a)}` : ` · ${a} verses`)
+          : ramp ? ` · no ${ramp.unit} recorded` : '';
         return `<b>${esc(fmtDateLong(ds))}</b><br>${esc(h.name)}: ${done ? `done ✓${amountLabel}` : 'not done'}`;
       },
       onDayClick: openDay,

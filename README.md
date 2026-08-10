@@ -3,7 +3,7 @@
 A personal habit tracker that runs entirely on GitHub Pages — no server, no accounts.
 
 - **GitHub-style heatmaps** for each habit (Greek/Hebrew Reading, Prayer — add your own), plus a combined view, streaks, and totals.
-- **Amount shading** — the Reading heatmap shades by verses read that day (under 10 / under 30 / 30+, roughly a chapter), and the Prayer heatmap by minutes (under 15m / under 30m / 30m+), with per-habit totals.
+- **Outline vs. shading** — marking a day done with no amount recorded outlines the cell; recording an amount fills it. The Reading heatmap fills by verses read that day (under 10 / under 30 / 30+, roughly a chapter), Prayer by minutes (under 15m / under 30m / 30m+), with per-habit totals. Today is marked by its own ring around the cell, so it stays visible either way.
 - **Prayer time tracking** — log minutes per day (quick +5/+15/+30 buttons in the day panel). Any habit can track time via Settings → ⏱.
 - **Verse-level reading log** — record exactly which passages you read each day.
 - **Greek NT tab** — verse-accurate progress through the Greek New Testament (counted against NA28; the 16 verses absent from NA28 are excluded). Includes per-book meters, per-chapter shading, and a way to mark passages you read before you started tracking.

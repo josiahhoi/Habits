@@ -211,17 +211,23 @@ a { color: var(--focus); }
 .hm-svg text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 10px; fill: var(--muted); }
 .hm-cell { fill: var(--cell0); cursor: pointer; }
 .hm-cell.future { opacity: 0.35; cursor: default; pointer-events: none; }
-.hm-cell.today-ring { stroke: var(--ink); stroke-width: 1.5; }
+.hm-today { stroke: var(--ink); stroke-width: 1.25; pointer-events: none; }
 .hm-cell.q1 { fill: var(--q1); }
 .hm-cell.q2 { fill: var(--q2); }
 .hm-cell.q3 { fill: var(--q3); }
-/* duration shading: one hue, light -> dark (under 15m, under 30m, 30m+/done) */
+/* amount shading: one hue, light -> dark (d1 = smallest, plain = most) */
 .hm-cell.d1 { fill-opacity: 0.4; }
 .hm-cell.d2 { fill-opacity: 0.68; }
 .hm-cell.s1 { fill: var(--slot1); } .hm-cell.s2 { fill: var(--slot2); }
 .hm-cell.s3 { fill: var(--slot3); } .hm-cell.s4 { fill: var(--slot4); }
 .hm-cell.s5 { fill: var(--slot5); } .hm-cell.s6 { fill: var(--slot6); }
 .hm-cell.s7 { fill: var(--slot7); } .hm-cell.s8 { fill: var(--slot8); }
+/* done, but no amount recorded: outline only (must follow the fills above) */
+.hm-cell.outline { fill: var(--cell0); stroke-width: 1.75; }
+.hm-cell.outline.s1 { stroke: var(--slot1); } .hm-cell.outline.s2 { stroke: var(--slot2); }
+.hm-cell.outline.s3 { stroke: var(--slot3); } .hm-cell.outline.s4 { stroke: var(--slot4); }
+.hm-cell.outline.s5 { stroke: var(--slot5); } .hm-cell.outline.s6 { stroke: var(--slot6); }
+.hm-cell.outline.s7 { stroke: var(--slot7); } .hm-cell.outline.s8 { stroke: var(--slot8); }
 .hm-legend { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 11px; margin-top: 4px; justify-content: flex-end; }
 .hm-legend .sw { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
 .year-nav { display: flex; align-items: center; gap: 6px; }

@@ -76,6 +76,7 @@ export function renderHeatmap(container, { year, classFor, tooltipFor, onDayClic
   }
 
   const cur = new Date(year, 0, 1);
+  let todayPos = null;
   for (let i = 0; i < totalDays; i++) {
     const ds = dateStr(cur);
     const idx = startDow + i;
@@ -87,9 +88,16 @@ export function renderHeatmap(container, { year, classFor, tooltipFor, onDayClic
     // A synced day can legitimately sit ahead of this device's local date
     // (other timezone); keep it clickable — only empty future cells are inert.
     if (ds > today && !extra) cls += ' future';
-    if (ds === today) cls += ' today-ring';
+    if (ds === today) todayPos = { x, y };
     parts.push(`<rect class="${cls}" data-date="${ds}" x="${x}" y="${y}" width="${CELL}" height="${CELL}" rx="3"></rect>`);
     cur.setDate(cur.getDate() + 1);
+  }
+  // "Today" is marked with its own ring in the gutter around the cell, not by
+  // stroking the cell itself — the cell's own stroke carries whether the habit
+  // was done, and the two must not compete for the same channel.
+  if (todayPos) {
+    const R = 1.75;
+    parts.push(`<rect class="hm-today" x="${todayPos.x - R}" y="${todayPos.y - R}" width="${CELL + R * 2}" height="${CELL + R * 2}" rx="4.5" fill="none"></rect>`);
   }
   parts.push('</svg>');
 
