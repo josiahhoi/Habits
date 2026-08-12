@@ -5,6 +5,7 @@ A personal habit tracker that runs entirely on GitHub Pages — no server, no ac
 - **GitHub-style heatmaps** for each habit (Greek/Hebrew Reading, Prayer — add your own), plus a combined view, streaks, and totals.
 - **Outline vs. shading** — marking a day done with no amount recorded outlines the cell; recording an amount fills it. The Reading heatmap fills by verses read that day (under 10 / under 30 / 30+, roughly a chapter), Prayer by minutes (under 15m / under 30m / 30m+), with per-habit totals. Today is marked by its own ring around the cell, so it stays visible either way.
 - **Prayer time tracking** — log minutes per day (quick +5/+15/+30 buttons in the day panel). Any habit can track time via Settings → ⏱.
+- **Daily weight with a trend chart** — a Weight tab with a 7-day rolling average over the raw daily points, an optional goal line, and 30d/90d/1y/all ranges, plus a sparkline and quick-entry field on the dashboard. Switch between lb and kg in Settings at any time: weights are stored in a single canonical unit and converted only for display, so switching never alters what you recorded and a second device set to the other unit still reads your data correctly.
 - **Verse-level reading log** — record exactly which passages you read each day.
 - **Greek NT tab** — verse-accurate progress through the Greek New Testament (counted against NA28; the 16 verses absent from NA28 are excluded). Includes per-book meters, per-chapter shading, and a way to mark passages you read before you started tracking.
 - **Cross-device sync with no backend**: the app can commit your log to this repo through the GitHub API using a fine-grained token you keep in your browser.
@@ -47,5 +48,6 @@ Merges are per-day, last-write-wins, so logging on your phone and laptop the sam
 ## Data & privacy
 
 - Your log is one JSON file: habits, one entry per day (habit completions, passages read, optional note), plus "previously read" passages. Export/import from Settings.
-- If the repo is public, `data/log.json` is public. It contains habit completions, Bible references, minutes, and any notes you write — keep notes non-sensitive, or make the repo private (Pages on private repos needs GitHub Pro).
+- If the repo is public, `data/log.json` is public. It contains habit completions, Bible references, minutes, weights, and any notes you write — keep notes non-sensitive, or make the repo private (Pages on private repos needs GitHub Pro).
+- Weights are stored in kilograms regardless of the unit you display, so `log.json` values will look like `82.6` even if you enter `182.0` lb.
 - Verse numbering follows standard English (KJV) versification; Greek NT progress excludes the 16 verses absent from NA28.

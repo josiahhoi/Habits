@@ -10,6 +10,7 @@ export function renderSettings(root) {
   const s = store.getState();
   const gh = s.settings.gh;
   const token = store.getToken();
+  const unit = store.getWeightUnit();
 
   const habitRows = s.habits.map((h) => `
     <div class="habit-manage-row ${h.archived ? 'archived' : ''}">
@@ -41,6 +42,15 @@ export function renderSettings(root) {
         <button class="btn danger" id="gh-disconnect">Disconnect</button>
       </div>
       <div class="status-line" id="gh-status"></div>
+    </div>
+
+    <div class="card">
+      <h2>Weight units</h2>
+      <p class="sub">Weights are stored in one canonical unit and converted for display, so switching here never changes what you recorded — and a second device set to the other unit still reads your data correctly.</p>
+      <div class="row">
+        <button class="btn ${unit === 'lb' ? 'primary' : ''}" data-unit="lb">Pounds (lb)</button>
+        <button class="btn ${unit === 'kg' ? 'primary' : ''}" data-unit="kg">Kilograms (kg)</button>
+      </div>
     </div>
 
     <div class="card">
@@ -122,6 +132,9 @@ export function renderSettings(root) {
       const name = prompt('Habit name:', h.name);
       if (name && name.trim()) store.updateHabit(h.id, { name: name.trim() });
     });
+  }
+  for (const btn of root.querySelectorAll('[data-unit]')) {
+    btn.addEventListener('click', () => store.setWeightUnit(btn.dataset.unit));
   }
   for (const btn of root.querySelectorAll('[data-tracktime]')) {
     btn.addEventListener('click', () => {

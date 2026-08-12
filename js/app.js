@@ -5,11 +5,13 @@ import * as sync from './sync.js';
 import { renderHeatmap } from './heatmap.js';
 import { renderGnt } from './gnt.js';
 import { renderSettings } from './settings.js';
+import { renderWeight } from './weight.js';
+import { renderWeightChart, withinRange, changeOver } from './weightchart.js';
 import { openDayPanel, isHabitDone } from './daypanel.js';
-import { esc, todayStr, addDays, fmtDateLong, fmtMins } from './util.js';
+import { esc, todayStr, addDays, fmtDateLong, fmtMins, fmtWeight, fmtWeightDelta, fromDisplayWeight, toDisplayWeight } from './util.js';
 import { formatRange, chapterPieces } from './bible.js';
 
-const TABS = ['dashboard', 'gnt', 'settings'];
+const TABS = ['dashboard', 'weight', 'gnt', 'settings'];
 let currentTab = 'dashboard';
 let viewYear = new Date().getFullYear();
 
@@ -72,6 +74,12 @@ function renderDashboard(root) {
   const habits = store.activeHabits();
   const today = todayStr();
 
+  const unit = store.getWeightUnit();
+  const weightAll = store.weightSeries();
+  const latestWeight = weightAll[weightAll.length - 1] || null;
+  const weightDelta30 = changeOver(weightAll, 30);
+  const todayWeight = store.weightFor(today);
+
   // Verses read per day, for shading the reading habit's heatmap.
   const versesByDay = {};
   for (const [ds, d] of Object.entries(store.getState().days)) {
@@ -130,6 +138,13 @@ function renderDashboard(root) {
       <div class="habit-chips">${chips}</div>
       <div class="row" style="margin-top:12px">
         <button class="btn" id="log-reading">📖 Log a passage…</button>
+        <span class="quick-weight">
+          <label for="quick-weight">⚖️</label>
+          <input id="quick-weight" type="number" inputmode="decimal" step="0.1" min="0"
+                 value="${todayWeight != null ? toDisplayWeight(todayWeight, unit).toFixed(1) : ''}"
+                 placeholder="0.0" aria-label="Today's weight in ${unit}">
+          <span class="small muted">${unit}</span>
+        </span>
         <button class="btn ghost" id="open-today">Day detail</button>
       </div>
     </div>
@@ -154,7 +169,19 @@ function renderDashboard(root) {
       </div>
     </div>
 
-    ${habitSections}`;
+    ${habitSections}
+
+    <div class="card">
+      <div class="hm-head">
+        <span class="hm-title">⚖️ Weight</span>
+        <span class="hm-stats">
+          ${latestWeight ? `<span><b>${esc(fmtWeight(latestWeight.kg, unit))}</b></span>` : '<span class="muted">not logged yet</span>'}
+          ${weightDelta30 == null ? '' : `<span>30d <b>${esc(fmtWeightDelta(weightDelta30, unit))}</b></span>`}
+          <button class="btn tiny" id="open-weight">Open</button>
+        </span>
+      </div>
+      <div id="dash-spark" class="wc-wrap"></div>
+    </div>`;
 
   // Today chips — compute the date at interaction time, not render time: a
   // dashboard rendered before midnight must not write to yesterday.
@@ -169,6 +196,22 @@ function renderDashboard(root) {
   root.querySelector('#open-today').addEventListener('click', () => openDayPanel(todayStr(), { onClose: rerender }));
   root.querySelector('#year-prev').addEventListener('click', () => { viewYear--; rerender(); });
   root.querySelector('#year-next').addEventListener('click', () => { viewYear++; rerender(); });
+  root.querySelector('#open-weight').addEventListener('click', () => switchTab('weight'));
+
+  const quickWeight = root.querySelector('#quick-weight');
+  quickWeight.addEventListener('change', () => {
+    // Empty clears the entry; the date is resolved at interaction time so a
+    // dashboard left open across midnight writes to the right day.
+    store.setWeight(todayStr(), quickWeight.value.trim() ? fromDisplayWeight(quickWeight.value, unit) : null);
+  });
+  quickWeight.addEventListener('keydown', (e) => { if (e.key === 'Enter') quickWeight.blur(); });
+
+  renderWeightChart(root.querySelector('#dash-spark'), {
+    series: withinRange(weightAll, 90),
+    unit,
+    goalKg: store.goalWeight(),
+    compact: true,
+  });
 
   const openDay = (date) => openDayPanel(date, { onClose: rerender });
 
@@ -230,6 +273,7 @@ function panel(tab) {
 
 function rerender() {
   if (currentTab === 'dashboard') renderDashboard(panel('dashboard'));
+  if (currentTab === 'weight') renderWeight(panel('weight'));
   if (currentTab === 'gnt') renderGnt(panel('gnt'));
   if (currentTab === 'settings') renderSettings(panel('settings'));
 }

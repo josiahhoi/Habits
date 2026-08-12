@@ -1,7 +1,7 @@
 // Day detail modal: toggle habits, log passages, see Strava activities, note.
 
 import * as store from './store.js';
-import { esc, fmtDateLong, todayStr } from './util.js';
+import { esc, fmtDateLong, todayStr, toDisplayWeight, fromDisplayWeight } from './util.js';
 import { BOOKS } from './bible-data.js';
 import { byAbbrev, formatRange, languageOf, maxVerse, normalizeRange } from './bible.js';
 
@@ -102,11 +102,21 @@ function close() {
     offStore = null;
   }
   document.removeEventListener('keydown', onEscape);
-  // Commit an in-progress note before tearing down the DOM — closing via
-  // Escape would otherwise discard text whose 'change' event never fired.
+  // Commit in-progress edits before tearing down the DOM — closing via Escape
+  // would otherwise discard values whose 'change' event never fired.
   const ta = document.getElementById('dp-note');
   if (ta && openDate && ta.value !== store.getDay(openDate).note) {
     store.setNote(openDate, ta.value);
+  }
+  const wi = document.getElementById('dp-weight');
+  if (wi && openDate) {
+    const typed = wi.value.trim() ? fromDisplayWeight(wi.value, store.getWeightUnit()) : null;
+    const stored = store.weightFor(openDate);
+    // Compare in kg with a tolerance: the field shows a rounded display value,
+    // so an untouched field must not overwrite the stored precision.
+    if (typed == null ? stored != null : Math.abs(typed - (stored ?? 0)) > 0.005) {
+      store.setWeight(openDate, typed);
+    }
   }
   openDate = null;
   const root = document.getElementById('modal-root');
@@ -121,6 +131,8 @@ function render(date) {
   const day = store.getDay(date);
   const habits = store.activeHabits();
   const isToday = date === todayStr();
+  const unit = store.getWeightUnit();
+  const dayWeight = store.weightFor(date);
 
   const habitRows = habits.map((h) => {
     const done = isHabitDone(date, h, day);
@@ -160,6 +172,15 @@ function render(date) {
           <button class="iconbtn" id="dp-close" aria-label="Close">✕</button>
         </div>
         <div class="day-habits">${habitRows}</div>
+        <div class="day-habit-row">
+          <span class="weight-label">⚖️ Weight</span>
+          <div class="time-row">
+            <input id="dp-weight" type="number" inputmode="decimal" step="0.1" min="0"
+                   value="${dayWeight != null ? toDisplayWeight(dayWeight, unit).toFixed(1) : ''}"
+                   placeholder="0.0" aria-label="Weight in ${unit}">
+            <span class="small muted">${unit}</span>
+          </div>
+        </div>
         <h3 class="small" style="margin-top:14px">Reading log</h3>
         <div class="reading-list">${readingsHtml || '<div class="small muted">No passages logged.</div>'}</div>
         ${passageFormHtml('dp')}
@@ -208,6 +229,11 @@ function render(date) {
   backdrop.querySelector('#dp-add').addEventListener('click', () => {
     const r = getRange();
     if (r) store.addReading(date, r);
+  });
+
+  const weightInput = backdrop.querySelector('#dp-weight');
+  weightInput.addEventListener('change', () => {
+    store.setWeight(date, weightInput.value.trim() ? fromDisplayWeight(weightInput.value, unit) : null);
   });
 
   const note = backdrop.querySelector('#dp-note');

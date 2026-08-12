@@ -233,6 +233,59 @@ a { color: var(--focus); }
 .year-nav { display: flex; align-items: center; gap: 6px; }
 .year-nav .year { font-weight: 650; min-width: 48px; text-align: center; }
 
+/* ---------- Weight chart ---------- */
+.wc-wrap { width: 100%; }
+.wc-svg { display: block; width: 100%; }
+.wc-svg text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wc-axis { font-size: 10px; fill: var(--muted); font-variant-numeric: tabular-nums; }
+.wc-grid { stroke: var(--grid); stroke-width: 1; }
+/* raw daily: same hue as the average, a lighter step — one measurement, not two */
+.wc-raw { stroke: var(--q1); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+.wc-raw-dot { fill: var(--q1); }
+.wc-avg { stroke: var(--meter-fill); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.wc-end { fill: var(--meter-fill); stroke: var(--surface); stroke-width: 2; }
+.wc-endlabel { font-size: 11px; font-weight: 650; fill: var(--ink); font-variant-numeric: tabular-nums; }
+/* goal is an annotation, not a series: muted ink, so hue stays reserved for data */
+.wc-goal { stroke: var(--baseline); stroke-width: 1; }
+.wc-goal-label { font-size: 10px; fill: var(--muted); }
+.wc-crosshair { stroke: var(--baseline); stroke-width: 1; }
+.wc-focus { fill: var(--q1); stroke: var(--surface); stroke-width: 2; }
+/* The HTML `hidden` attribute is not honored on SVG elements — without this
+   the focus dot renders at the SVG origin as a stray mark. */
+.wc-hover[hidden] { display: none; }
+.wc-capture { cursor: crosshair; }
+.chart-empty { color: var(--muted); font-size: 13px; padding: 22px 0; text-align: center; }
+.hm-legend .wc-key-raw { background: var(--q1); }
+.hm-legend .wc-key-avg { background: var(--meter-fill); }
+.hm-legend .wc-key-goal { background: var(--baseline); height: 3px; border-radius: 2px; }
+
+/* ---------- Weight tab ---------- */
+.wstats { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); }
+.wstat b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.wstat b.down { color: var(--good); }
+.wstat b.up { color: var(--ink); }
+.btn.tiny.sel { background: color-mix(in srgb, var(--focus) 16%, transparent); border-color: transparent; }
+.w-list { display: flex; flex-direction: column; }
+.w-row {
+  display: grid; grid-template-columns: 1fr auto 84px 34px; gap: 10px; align-items: center;
+  padding: 7px 4px; border-bottom: 1px solid var(--grid);
+}
+.w-row:last-child { border-bottom: 0; }
+.w-date { color: var(--ink-2); font-size: 13px; }
+.w-val { font-weight: 570; font-variant-numeric: tabular-nums; }
+.w-delta { text-align: right; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.w-delta.down { color: var(--good); }
+.quick-weight { display: inline-flex; align-items: center; gap: 6px; }
+.quick-weight input {
+  width: 74px; background: var(--page); border: 1px solid var(--border);
+  border-radius: 9px; padding: 7px 9px; font-variant-numeric: tabular-nums;
+}
+.quick-weight input:focus-visible { outline: 2px solid var(--focus); outline-offset: 0; }
+.weight-label { font-weight: 550; }
+/* wider than the chapter/verse number inputs this form rule was written for */
+.reading-form input#w-value, .reading-form input#w-goal { width: 96px; }
+.time-row input#dp-weight { width: 82px; }
+
 /* ---------- Tooltip ---------- */
 .tooltip {
   position: fixed; z-index: 100; pointer-events: none;

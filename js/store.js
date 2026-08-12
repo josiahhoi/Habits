@@ -16,12 +16,28 @@ export function defaultState() {
       { id: 'prayer', name: 'Prayer', icon: '🙏', slot: 3, auto: null, track: 'duration', archived: false },
     ],
     habitsUpdated: 0,
-    // days["YYYY-MM-DD"] = { done: [habitId], readings: [{b,c1,v1,c2,v2}], note: "", m: epochMs }
+    // days["YYYY-MM-DD"] = { done: [habitId], readings: [{b,c1,v1,c2,v2}],
+    //                        note: "", mins: {habitId: n}, weight: kg, m: epochMs }
     days: {},
     // Passages read before tracking started (not tied to a date)
     backfill: { ranges: [], m: 0 },
-    settings: { gh: { owner: '', repo: '', branch: 'main', path: 'data/log.json' } },
+    // Synced user preferences (whole-block LWW, like backfill). The lb/kg
+    // *display* unit is deliberately NOT here — it lives in local settings.
+    prefs: { goalKg: null, m: 0 },
+    settings: { gh: { owner: '', repo: '', branch: 'main', path: 'data/log.json' }, weightUnit: 'lb' },
   };
+}
+
+// Weight is stored canonically in kilograms so the lb/kg display toggle can
+// stay device-local: settings never sync, so values stored "as typed" would be
+// misread by a device set to the other unit. Anything outside human range is
+// rejected — a typo or hostile JSON must not blow up the chart's axis scaling.
+const MIN_KG = 20;
+const MAX_KG = 500;
+export function validWeightKg(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < MIN_KG || n > MAX_KG) return null;
+  return Math.round(n * 1000) / 1000;
 }
 
 // Habit records arrive from synced/imported JSON, and their fields end up in
@@ -66,11 +82,18 @@ function normalize(s) {
     day.readings = Array.isArray(day.readings) ? day.readings : [];
     day.note = typeof day.note === 'string' ? day.note : '';
     day.mins = day.mins && typeof day.mins === 'object' ? day.mins : {};
+    const w = validWeightKg(day.weight);
+    if (w == null) delete day.weight;
+    else day.weight = w;
     day.m = day.m || 0;
   }
   if (!s.backfill || !Array.isArray(s.backfill.ranges)) s.backfill = d.backfill;
+  s.prefs = s.prefs && typeof s.prefs === 'object'
+    ? { goalKg: validWeightKg(s.prefs.goalKg), m: s.prefs.m || 0 }
+    : d.prefs;
   s.settings = s.settings && typeof s.settings === 'object' ? s.settings : d.settings;
   s.settings.gh = { ...d.settings.gh, ...(s.settings.gh || {}) };
+  s.settings.weightUnit = s.settings.weightUnit === 'kg' ? 'kg' : 'lb';
   return s;
 }
 
@@ -183,6 +206,54 @@ export function minutesFor(date, habitId) {
   return d && d.mins ? Number(d.mins[habitId]) || 0 : 0;
 }
 
+// ---------- Weight (always kilograms; convert at the display edge) ----------
+
+// An out-of-range or empty value clears the day's entry. The day record itself
+// is kept with a fresh timestamp so the deletion wins the last-write-wins merge.
+export function setWeight(date, kg) {
+  const d = day(date);
+  const v = validWeightKg(kg);
+  if (v == null) delete d.weight;
+  else d.weight = v;
+  touch(date);
+  save();
+}
+
+export function weightFor(date) {
+  const d = load().days[date];
+  return d && d.weight != null ? d.weight : null;
+}
+
+// Chronological [{ date, kg }] — the input every weight view works from.
+export function weightSeries() {
+  const out = [];
+  for (const [date, d] of Object.entries(load().days)) {
+    if (d.weight != null) out.push({ date, kg: d.weight });
+  }
+  out.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  return out;
+}
+
+export function goalWeight() {
+  return load().prefs.goalKg;
+}
+
+export function setGoalWeight(kg) {
+  const s = load();
+  s.prefs = { goalKg: validWeightKg(kg), m: Date.now() };
+  save();
+}
+
+export function getWeightUnit() {
+  return load().settings.weightUnit === 'kg' ? 'kg' : 'lb';
+}
+
+export function setWeightUnit(unit) {
+  const s = load();
+  s.settings.weightUnit = unit === 'kg' ? 'kg' : 'lb';
+  save('settings');
+}
+
 export function totalMinutes(habitId) {
   let total = 0;
   for (const d of Object.values(load().days)) {
@@ -269,6 +340,7 @@ export function syncPayload(s = load()) {
     habitsUpdated: s.habitsUpdated,
     days,
     backfill: s.backfill,
+    prefs: s.prefs,
   };
 }
 
@@ -277,7 +349,9 @@ export function serializeSync(s = load()) {
 }
 
 // Merge remote payload into local state. Day-level last-write-wins;
-// habits and backfill as whole blocks by their own timestamps.
+// habits, backfill, and prefs as whole blocks by their own timestamps.
+// NOTE: each day is rebuilt from an explicit field list below — any new
+// per-day field MUST be added there too, or it is silently dropped on merge.
 export function mergeRemote(remote) {
   if (!remote || typeof remote !== 'object') return false;
   const s = load();
@@ -295,18 +369,25 @@ export function mergeRemote(remote) {
     if (!rd || typeof rd !== 'object') continue;
     const ld = s.days[k];
     if (!ld || (rd.m || 0) > (ld.m || 0)) {
-      s.days[k] = {
+      const merged = {
         done: Array.isArray(rd.done) ? rd.done : [],
         readings: Array.isArray(rd.readings) ? rd.readings : [],
         note: typeof rd.note === 'string' ? rd.note : '',
         mins: rd.mins && typeof rd.mins === 'object' ? rd.mins : {},
         m: rd.m || 0,
       };
+      const w = validWeightKg(rd.weight);
+      if (w != null) merged.weight = w;
+      s.days[k] = merged;
       changed = true;
     }
   }
   if (remote.backfill && (remote.backfill.m || 0) > (s.backfill.m || 0) && Array.isArray(remote.backfill.ranges)) {
     s.backfill = { ranges: remote.backfill.ranges, m: remote.backfill.m };
+    changed = true;
+  }
+  if (remote.prefs && (remote.prefs.m || 0) > (s.prefs.m || 0)) {
+    s.prefs = { goalKg: validWeightKg(remote.prefs.goalKg), m: remote.prefs.m || 0 };
     changed = true;
   }
   if (changed) save('change', { silent: true });

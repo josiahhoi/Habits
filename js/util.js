@@ -65,6 +65,36 @@ export function download(filename, text) {
   URL.revokeObjectURL(url);
 }
 
+// ---------- Weight: canonical kilograms in, display units out ----------
+
+export const KG_PER_LB = 0.45359237;
+
+export function toDisplayWeight(kg, unit) {
+  if (kg == null) return null;
+  return unit === 'kg' ? kg : kg / KG_PER_LB;
+}
+
+export function fromDisplayWeight(value, unit) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return unit === 'kg' ? n : n * KG_PER_LB;
+}
+
+// One decimal everywhere, so an lb -> kg -> lb round-trip never surfaces
+// float noise like 182.40000000000003.
+export function fmtWeight(kg, unit, { withUnit = true } = {}) {
+  const v = toDisplayWeight(kg, unit);
+  if (v == null) return '—';
+  return `${v.toFixed(1)}${withUnit ? ` ${unit}` : ''}`;
+}
+
+export function fmtWeightDelta(kg, unit) {
+  const v = toDisplayWeight(kg, unit);
+  if (v == null) return '';
+  const sign = v > 0 ? '+' : v < 0 ? '−' : '';
+  return `${sign}${Math.abs(v).toFixed(1)} ${unit}`;
+}
+
 export function fmtMins(mins) {
   const m = Math.round(Number(mins) || 0);
   const h = Math.floor(m / 60);
