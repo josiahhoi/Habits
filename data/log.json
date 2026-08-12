@@ -130,5 +130,9 @@
  "backfill": {
   "ranges": [],
   "m": 0
+ },
+ "prefs": {
+  "goalKg": null,
+  "m": 0
  }
 }
